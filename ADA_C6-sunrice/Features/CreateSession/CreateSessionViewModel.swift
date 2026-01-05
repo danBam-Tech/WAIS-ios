@@ -213,7 +213,7 @@ final class CreateSessionViewModel: ObservableObject {
             errorMessage = nil
             let session = try await sessionService.createSession(
                 topic: topic,
-                description: description,
+                description: description.isEmpty ? "-" : description,
                 duration_per_round: durationPerRound,
                 mode_id: selectedPreset.id
             )
