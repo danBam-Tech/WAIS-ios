@@ -82,11 +82,7 @@ final class CreateSessionViewModel: ObservableObject {
     // MARK: Select Presets
     @Published var selectedPreset: SessionPreset? = nil
     @Published var presets: [SessionPreset] = []
-    let tbaPresets: [TBASessionPreset] = [
-        TBASessionPreset(id: 1, title: "Identifying Solutions"),
-        TBASessionPreset(id: 2, title: "Strategic Planning")
-    ]
-    
+    @Published var tbaPresets: [TBASessionPreset] = []    
     // MARK: Review Session
     @Published var durationPerRound: Int64 = 300
     
@@ -269,11 +265,13 @@ final class CreateSessionViewModel: ObservableObject {
                     sequence: mode.sequence ?? [],
                     overview: mode.overview ?? "Overview coming soon",
                     bestFor: mode.best_for ?? [],
-                    outcome: mode.outcome ?? ""
+                    outcome: mode.outcome ?? "",
+                    status: mode.status ?? .coming_soon
                 )
             }
-            presets = mapped
-            if selectedPreset == nil, let first = mapped.first {
+            presets = mapped.filter { $0.status == .live || $0.status == .beta }
+            tbaPresets = mapped.filter { $0.status == .coming_soon }.map { TBASessionPreset(id: $0.id, title: $0.title) }
+            if selectedPreset == nil, let first = presets.first {
                 selectedPreset = first
             }
         } catch {

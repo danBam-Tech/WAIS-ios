@@ -112,7 +112,8 @@ struct SessionLobbyView: View {
         sequence: ["y", "b", "r"],
         overview: nil,
         best_for: nil,
-        outcome: nil
+        outcome: nil,
+        status: .coming_soon
     )
     let participants = [
         ParticipantDTO(id: 1, name: "Saskia", status: 1, created_at: nil, user_role_sessions: [.init(role_id: 1)]),

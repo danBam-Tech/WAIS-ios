@@ -20,6 +20,7 @@ struct ModeDTO: Decodable {
     let overview: String?
     let best_for: [String]?
     let outcome: String?
+    let status: ModeStatus?
 }
 
 

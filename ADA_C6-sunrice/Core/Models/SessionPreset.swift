@@ -6,6 +6,16 @@
 //
 import Foundation
 
+enum ModeStatus: String, Codable {
+    case live
+    case beta
+    case coming_soon
+
+    var isSelectable: Bool {
+        return self == .live || self == .beta
+    }
+}
+
 struct SessionPreset: Identifiable, Equatable {
     let id: Int64
     let title: String
@@ -16,4 +26,5 @@ struct SessionPreset: Identifiable, Equatable {
     let overview: String
     let bestFor: [String]
     let outcome: String
+    let status: ModeStatus
 }
