@@ -23,7 +23,14 @@ struct SessionCode: View {
     }
     
     private var shareMessage: String {
-        return "Let be WAIS with me!\n\nTopic: \(session.topic ?? "")\nDescription: \(session.description ?? "")\nCode: \(session.token ?? "")"
+        var message = "Let be WAIS with me!\n"
+        message += "Topic: \(session.topic ?? "")\n"
+        if let description = session.description, !description.isEmpty {
+            message += "Description: \(description)\n"
+        }
+        message += "Code: \(session.token ?? "")"
+        
+        return message
     }
     
     @State private var showMessage: Bool = false
@@ -63,7 +70,10 @@ struct SessionCode: View {
                         .font(.symbolL)
                         .foregroundStyle(AppColor.Primary.blue)
                 }
-                ShareLink(item: shareMessage) {
+                
+                ShareLink(
+                    item: shareMessage,
+                ) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.symbolL)
                         .foregroundStyle(AppColor.Primary.blue)
