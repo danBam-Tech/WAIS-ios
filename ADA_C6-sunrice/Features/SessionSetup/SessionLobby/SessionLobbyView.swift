@@ -49,7 +49,7 @@ struct SessionLobbyView: View {
                 .foregroundColor(AppColor.Primary.gray)
             
             // Code
-            SessionCode(code: session.token ?? "------")
+            SessionCode(session: session)
             
             // Chosen preset
             SelectedPreset(

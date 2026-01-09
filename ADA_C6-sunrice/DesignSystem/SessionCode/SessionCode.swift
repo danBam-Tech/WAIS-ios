@@ -14,12 +14,16 @@ import AppKit
 #endif
 
 struct SessionCode: View {
-    var code: String = "000000"
+    let session: SessionDTO
     
     private var formattedCode: String {
-        let d = code.prefix(6)
+        let d = session.token?.prefix(6) ?? "000000"
         guard d.count > 3 else { return String(d) }
         return String(d.prefix(3)) + " " + String(d.dropFirst(3))
+    }
+    
+    private var shareMessage: String {
+        return "Let be WAIS with me!\n\nTopic: \(session.topic ?? "")\nDescription: \(session.description ?? "")\nCode: \(session.token ?? "")"
     }
     
     @State private var showMessage: Bool = false
@@ -37,7 +41,7 @@ struct SessionCode: View {
                         .foregroundColor(AppColor.Primary.blue)
                 }
                 Button(action: {
-                    let raw = code.filter { $0.isNumber }
+                    let raw = session.token?.filter { $0.isNumber }
                     #if canImport(UIKit)
                     UIPasteboard.general.string = raw
                     #endif
@@ -59,7 +63,7 @@ struct SessionCode: View {
                         .font(.symbolL)
                         .foregroundStyle(AppColor.Primary.blue)
                 }
-                Button(action: {}) {
+                ShareLink(item: shareMessage) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.symbolL)
                         .foregroundStyle(AppColor.Primary.blue)
@@ -83,5 +87,19 @@ struct SessionCode: View {
 }
 
 #Preview {
-    SessionCode(code: "000000")
+    let session = SessionDTO(
+        id: 1,
+        duration_per_round: 5,
+        topic: "How might we make onboarding more delightful?",
+        description: "Let’s find creative ways to boost user engagement without adding extra steps.",
+        token: "244831",
+        is_token_expired: false,
+        started_at: nil,
+        ended_at: nil,
+        created_at: Date(),
+        mode_id: 1,
+        current_round: 1,
+    )
+    
+    SessionCode(session: session)
 }
