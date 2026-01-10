@@ -109,6 +109,7 @@ struct SessionCode: View {
         created_at: Date(),
         mode_id: 1,
         current_round: 1,
+        current_round_deadline: Date.now,
     )
     
     SessionCode(session: session)

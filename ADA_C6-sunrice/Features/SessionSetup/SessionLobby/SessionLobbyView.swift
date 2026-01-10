@@ -82,6 +82,7 @@ struct SessionLobbyView: View {
                     .padding(.top, 8)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
