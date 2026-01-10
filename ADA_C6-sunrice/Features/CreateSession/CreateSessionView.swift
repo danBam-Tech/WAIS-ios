@@ -12,6 +12,7 @@ struct CreateSessionView: View {
     @EnvironmentObject var navVM: NavigationViewModel
     @StateObject private var vm = CreateSessionViewModel()
     @State private var alertDismissTask: Task<Void, Never>?
+    @State private var showStartSessionAlert = false
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -39,7 +40,12 @@ struct CreateSessionView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
                 AppButton(title: vm.buttonText) {
-                    vm.handleNext()
+                    // Show confirmation alert only for lobby step
+                    if vm.step == .lobby {
+                        showStartSessionAlert = true
+                    } else {
+                        vm.handleNext()
+                    }
                 }
                 .disabled(vm.isNextButtonDisabled)
             }
@@ -86,6 +92,14 @@ struct CreateSessionView: View {
             vm.onNavigateToSessionRoom = { sessionId, isHost in
                 navVM.goToSessionRoom(id: sessionId, isHost: isHost)
             }
+        }
+        .alert("Start Session?", isPresented: $showStartSessionAlert) {
+            Button("Wait a minute", role: .destructive) { }
+            Button("Start Session", role: .cancel) {
+                vm.handleNext()
+            }
+        } message: {
+            Text("Once started, participants can begin sharing ideas. Make sure everyone who wants to join is in the lobby.")
         }
         
     }

@@ -11,7 +11,7 @@ struct OnboardingPage1View: View {
                         .scaledToFit()
                         .frame(width: 250, height: 250)
                 }
-                .frame(height: 450)
+                .frame(maxHeight: 350)
                 VStack(spacing: 20) {
                     Text("Welcome to WAIS")
                         .font(.titleMD)
@@ -35,9 +35,9 @@ struct OnboardingPage2View: View {
                     Image(.colorRounds)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 250, height: 250)
+                        .frame(width: 300, height: 300)
                 }
-                .frame(height: 450)
+                .frame(maxHeight: 350)
                 VStack(spacing: 20) {
                     Text("Think in color, \none focus at a time")
                         .font(.titleMD)
@@ -61,9 +61,9 @@ struct OnboardingPage3View: View {
                 VStack {
                     // LOTTIE ANIMATION REPLACING IMAGE
                     LottieView(name: "splash_animation", loopMode: .loop)
-                        .frame(width: 250, height: 250)
+                        .frame(width: 300, height: 300)
                 }
-                .frame(height: 450)
+                .frame(maxHeight: 350)
 
                 VStack(spacing: 20) {
                     Text("Ready to begin \nyour first flow?")
@@ -79,4 +79,8 @@ struct OnboardingPage3View: View {
             }
         }
     }
+}
+
+#Preview {
+    OnboardingPage2View()
 }

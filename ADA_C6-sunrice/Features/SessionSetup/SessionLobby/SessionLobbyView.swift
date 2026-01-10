@@ -29,7 +29,7 @@ struct SessionLobbyView: View {
                         ParticipantBadge(name: user.name ?? "user", isHost: user.isHost)
                     }
                 }
-                .frame(maxHeight: 64)
+                .frame(maxHeight: 72)
             }
             
             // Info
@@ -82,13 +82,14 @@ struct SessionLobbyView: View {
                     .padding(.top, 8)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 #Preview {
     let session = SessionDTO(
         id: 1,
-        duration_per_round: 5,
+        duration_per_round: 300,
         topic: "How might we make onboarding more delightful?",
         description: "Let’s find creative ways to boost user engagement without adding extra steps.",
         token: "244831",
@@ -98,6 +99,7 @@ struct SessionLobbyView: View {
         created_at: Date(),
         mode_id: 1,
         current_round: 1,
+        current_round_deadline: nil
     )
     let mode = ModeDTO(
         id: 1,
@@ -111,7 +113,8 @@ struct SessionLobbyView: View {
         sequence: ["y", "b", "r"],
         overview: nil,
         best_for: nil,
-        outcome: nil
+        outcome: nil,
+        status: .coming_soon
     )
     let participants = [
         ParticipantDTO(id: 1, name: "Saskia", status: 1, created_at: nil, user_role_sessions: [.init(role_id: 1)]),

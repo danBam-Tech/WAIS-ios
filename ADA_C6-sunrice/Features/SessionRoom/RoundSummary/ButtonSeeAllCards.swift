@@ -11,12 +11,12 @@ struct ButtonSeeAllCards: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 10) {
                 Text("See All Cards")
-                    .font(.system(size: 16, weight: .heavy))
+                    .font(.labelMD)
                     .foregroundColor(Color(red: 0.14, green: 0.15, blue: 0.16))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.labelMD)
                     .foregroundColor(Color(red: 0.14, green: 0.15, blue: 0.16))
                     .rotationEffect(.degrees(-90))   //
             }

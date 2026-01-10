@@ -18,7 +18,7 @@ struct TimerTag: View {
             .background(
                 Capsule().fill(AppColor.blue10)
             )
-            .frame(maxWidth: 64, maxHeight: 35)
+            .frame(maxWidth: 100, maxHeight: 35, alignment: .trailing)
     }
 }
 

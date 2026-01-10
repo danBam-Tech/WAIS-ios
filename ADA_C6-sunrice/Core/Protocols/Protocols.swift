@@ -35,6 +35,7 @@ protocol SessionServicing {
     func fetchSequence(modeId: Int64) async throws -> SequenceDTO
     func updateCurrentRound(sessionId: Int64, round: Int64) async throws
     func fetchType(id: Int64) async throws -> TypeDTO
+    func updateRoundDeadline(sessionId: Int64, deadline: Date) async throws
 }
 
 protocol IdeaServicing {
@@ -48,4 +49,12 @@ protocol SummaryServicing {
     func summarizeWhiteSession(sessionId: Int) async throws -> SummarizeSessionResponse<IdeaSummary>
     func summarizeGreenSession(sessionId: Int) async throws -> SummarizeSessionResponse<IdeaSummary>
     func summarizeRedSession(sessionId: Int) async throws -> SummarizeSessionResponse<IdeaSummary>
+    func fetchExistingSummary(sessionId: Int, roundType: Int) async throws -> IdeaSummary?
+    func generateFinalSummary(sessionId: Int) async throws -> GenerateFinalSummaryResponse
+    func fetchFinalSummary(sessionId: Int) async throws -> FinalSummaryDTO?
+}
+
+protocol IdeaInsightServicing {
+    func analyzeIdea(sessionId: Int, greenIdeaId: Int) async throws -> AnalyzeIdeaResponse
+    func fetchIdeaInsights(sessionId: Int) async throws -> [IdeaInsightDTO]
 }

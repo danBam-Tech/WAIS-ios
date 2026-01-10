@@ -3,17 +3,17 @@ import SwiftUI
 extension Font {
     // MARK: - SF Pro – Body & Labels
 
-    /// Small body / description / helper text (SF Pro, 12, .regular)
-    static let bodySM = Font.system(size: 12, weight: .regular, design: .default)
+    /// Small body / description / helper text (SF Pro, 14, .regular)
+    static let bodySM = Font.system(size: 14, weight: .regular, design: .default)
 
-    /// Small body with emphasis (alert, etc) (SF Pro, 12, .semibold)
-    static let bodySMEmphasis = Font.system(size: 12, weight: .semibold, design: .default)
+    /// Small body with emphasis (alert, etc) (SF Pro, 14, .semibold)
+    static let bodySMEmphasis = Font.system(size: 14, weight: .semibold, design: .default)
     
-    /// Tiny label (notifications, status, etc) (SF Pro, 10, .regular)
-    static let labelTiny = Font.system(size: 10, weight: .regular, design: .default)
+    /// Tiny label (notifications, status, etc) (SF Pro, 12, .regular)
+    static let labelTiny = Font.system(size: 12, weight: .regular, design: .default)
 
-    /// Small labels (small buttons, badges, strong alerts) (SF Pro, 12, .bold)
-    static let labelSM = Font.system(size: 12, weight: .bold, design: .default)
+    /// Small labels (small buttons, badges, strong alerts) (SF Pro, 14, .bold)
+    static let labelSM = Font.system(size: 14, weight: .bold, design: .default)
 
     /// Medium labels (buttons, numbers next to symbols, small subheadings) (SF Pro, 16, .bold)
     static let labelMD = Font.system(size: 16, weight: .bold, design: .default)
@@ -33,6 +33,11 @@ extension Font {
 
 extension Font {
     // MARK: - Manrope ExtraBold – Titles
+    
+    /// Title for label (Manrope-ExtraBold, 16)
+    static let titleSSM = Font.custom("Manrope-ExtraBold",
+                                    size: 16,
+                                    relativeTo: .title3)
 
     /// Title indicating the current screen (Manrope-ExtraBold, 20)
     static let titleSM = Font.custom("Manrope-ExtraBold",

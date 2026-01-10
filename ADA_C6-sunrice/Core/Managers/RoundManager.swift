@@ -51,8 +51,8 @@ final class RoundManager {
         let sessionRoom = mapTypeToSessionRoom(typeName: type.name ?? "")
         
         // Calculate deadline (10 seconds for testing, should use session.duration_per_round in production)
-//        let deadline = Date().addingTimeInterval(30)
-         let deadline = Date().addingTimeInterval(TimeInterval((session.duration_per_round ?? 1) * 60))
+//        let deadline = Date().addingTimeInterval(20)
+         let deadline = Date().addingTimeInterval(TimeInterval(session.duration_per_round ?? 60))
         
         return RoundInfo(typeId: typeId, sessionRoom: sessionRoom, deadline: deadline)
     }

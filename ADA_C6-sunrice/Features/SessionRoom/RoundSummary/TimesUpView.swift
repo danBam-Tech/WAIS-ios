@@ -44,31 +44,27 @@ struct LottieView: UIViewRepresentable {
 
 struct TimesUpView: View {
     var body: some View {
-        ZStack {
-            Background()
+        VStack(spacing: 12) {
+            LottieView(name: "times_up_clock_animation", loopMode: .loop)
+                .frame(width: 300, height: 300)
             
-            VStack(spacing: 12) {
-                LottieView(name: "times_up_clock_animation", loopMode: .loop)
-                    .frame(width: 300, height: 300)
+            VStack(spacing: 4) {
+                Text("TIME'S UP!")
+                    .font(.titleLG)
+                    .multilineTextAlignment(.center)
                 
-                VStack(spacing: 4) {
-                    Text("TIME'S UP!")
-                        .font(.titleLG)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("Nice work! Your input here helps shape the bigger picture.")
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
+                Text("Nice work! Your input here helps shape the bigger picture.")
+                    .multilineTextAlignment(.center)
             }
-            .foregroundStyle(.blue50)
-            .padding(.horizontal, 24)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(.blue50)
+        .padding(.horizontal, 24)
         .onTapGesture {
             UIApplication.shared.endEditing()
         }
         .onTapToDismissKeyboard()
-        .background(.white)
+        .background(Background())
     }
 }
 

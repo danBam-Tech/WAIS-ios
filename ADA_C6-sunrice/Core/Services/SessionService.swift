@@ -42,7 +42,8 @@ struct SessionService: SessionServicing {
             ended_at: nil,
             created_at: Date(),
             mode_id: rpcSession.mode_id,
-            current_round: rpcSession.current_round
+            current_round: rpcSession.current_round,
+            current_round_deadline: nil
         )
     }
     
@@ -162,6 +163,15 @@ struct SessionService: SessionServicing {
         
         return response.value
     }
+    
+    func updateRoundDeadline(sessionId: Int64, deadline: Date) async throws {
+        let payload = UpdateDeadlinePayload(current_round_deadline: deadline)
+        try await client
+            .from("sessions")
+            .update(payload)
+            .eq("id", value: Int(sessionId))
+            .execute()
+    }
 }
 
 private struct StartSessionPayload: Encodable, Sendable {
@@ -180,4 +190,8 @@ private struct NewSessionPayload: Encodable, Sendable {
 
 private struct UpdateCurrentRoundPayload: Encodable, Sendable {
     let current_round: Int64
+}
+
+private struct UpdateDeadlinePayload: Encodable, Sendable {
+    let current_round_deadline: Date
 }

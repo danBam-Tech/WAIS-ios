@@ -30,4 +30,8 @@ class NavigationViewModel: ObservableObject {
     func goToSessionRoom(id: Int64, isHost: Bool) {
         path.append(Route.session(id: String(id), isHost: isHost))
     }
+    
+    func popToRoot() {
+        path.removeLast(path.count)
+    }
 }

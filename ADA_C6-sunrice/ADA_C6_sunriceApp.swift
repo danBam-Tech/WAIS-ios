@@ -9,9 +9,17 @@ import SwiftUI
 
 @main
 struct ADA_C6_sunriceApp: App {
+    @State private var hasCompletedOnboarding = false
+    
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            if hasCompletedOnboarding {
+                HomeView()
+            } else {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                }
+            }
         }
     }
 }

@@ -12,7 +12,16 @@ struct DurationSelector: View {
     let totalRounds: Int64 = 6
     
     var totalDuration: String {
-        "\(durationPerRound * totalRounds) min"
+        formatDuration(durationPerRound * totalRounds)
+    }
+    
+    private func formatDuration(_ seconds: Int64) -> String {
+        let minutes = Double(seconds) / 60.0
+        if minutes.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(minutes)) min"
+        } else {
+            return String(format: "%.1f min", minutes)
+        }
     }
     
     var body: some View {
@@ -24,19 +33,19 @@ struct DurationSelector: View {
                     .foregroundColor(AppColor.Primary.gray)
                 
                 HStack {
-                    Button(action: {durationPerRound = max(1, durationPerRound - 1)}) {
+                    Button(action: {durationPerRound = max(30, durationPerRound - 30)}) {
                         Image(systemName: "minus")
                             .font(.symbolM)
                             .foregroundColor(AppColor.Primary.gray)
                             .frame(maxWidth: 24, maxHeight: 20)
                     }
                     Spacer()
-                    Text("\(durationPerRound) min")
+                    Text("\(durationPerRound) sec")
                         .font(.symbolM)
                         .foregroundColor(AppColor.Primary.gray)
                         .frame(maxWidth: 64, maxHeight: 20)
                     Spacer()
-                    Button(action: {durationPerRound = min(30, durationPerRound + 1)}) {
+                    Button(action: {durationPerRound = min(1800, durationPerRound + 30)}) {
                         Image(systemName: "plus")
                             .font(.symbolM)
                             .foregroundColor(AppColor.Primary.gray)
@@ -78,6 +87,6 @@ struct DurationSelector: View {
 }
 
 #Preview {
-    @Previewable @State var durationPerRound: Int64 = 5
+    @Previewable @State var durationPerRound: Int64 = 300
     DurationSelector(durationPerRound: $durationPerRound)
 }

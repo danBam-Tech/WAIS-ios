@@ -25,31 +25,34 @@ struct Header: View {
     var onBack: (() -> Void)? = nil
     
     var body: some View {
-        HStack {
-            // LEFT: back
-            if config.showsBackButton {
-                BackButton(action: {
-                    if let onBack { onBack() } else { dismiss() }
-                })
-            } else {
-                Color.clear
-                    .frame(maxWidth: 64, maxHeight: 35)
-            }
-            
-            Spacer()
-            
-            // CENTER: title
+        ZStack {
+            // CENTER: title (always centered)
             if let title = config.title {
-                Text(config.title ?? "")
+                Text(title)
                     .bold()
                     .font(.titleSM)
                     .foregroundStyle(AppColor.Primary.gray)
+                    .frame(maxWidth: 250)
+                    .multilineTextAlignment(.center)
             }
             
-            Spacer()
-            
-            // RIGHT: trailing view (skip or timer)
-            trailingView
+            // LEFT & RIGHT: leading/trailing buttons
+            HStack {
+                // LEFT: back button
+                if config.showsBackButton {
+                    BackButton(action: {
+                        if let onBack { onBack() } else { dismiss() }
+                    })
+                } else {
+                    Color.clear
+                        .frame(width: 44, height: 35)
+                }
+                
+                Spacer()
+                
+                // RIGHT: trailing view (skip or timer)
+                trailingView
+            }
         }
     }
     
@@ -58,7 +61,7 @@ struct Header: View {
         switch config.trailing {
         case .none:
             Color.clear
-                .frame(maxWidth: 64, maxHeight: 35)
+                .frame(maxWidth: 100, maxHeight: 35)
             
         case .skip(let action):
             SkipButton(action: action)
@@ -74,8 +77,8 @@ struct Header: View {
         config: .init(
             title: "Header",
             showsBackButton: true,
-            trailing: .skip(action: {})
-//            trailing: .timer(text: "10:00")
+//            trailing: .skip(action: {})
+            trailing: .timer(date: Date.now)
 //            trailing: .none
     ))
 }

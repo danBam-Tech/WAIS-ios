@@ -13,6 +13,7 @@ struct Background: View {
             .resizable()
             .ignoresSafeArea()
             .scaledToFill()
+            .background(.white)
     }
 }
 

@@ -49,6 +49,8 @@ struct SelectedPreset: View {
             // Description
             Text("\(description ?? "Description")")
                 .font(.bodySM)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             // Sequences
@@ -70,6 +72,8 @@ struct SelectedPreset: View {
                 .font(.bodySM)
                 .foregroundColor(AppColor.Primary.gray)
                 .italic(true)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding()
         .background(

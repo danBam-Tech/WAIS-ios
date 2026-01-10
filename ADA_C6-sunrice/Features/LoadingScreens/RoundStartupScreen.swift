@@ -21,12 +21,13 @@ enum ImageName: String, CaseIterable {
 }
 
 enum RoundType {
-    case white, red, black, yellow, green
+    case white, red, black, yellow, green, darker_green
     
     var title: String {
         switch self {
         case .white: return "Let’s Put Every Facts & Information You Know"
         case .red: return "Let’s Put Your Feelings About The Ideas"
+        case .darker_green: return "Let’s Build on These Ideas"
         case .black: return "Let’s Analyze The Risks The Ideas"
         case .yellow: return "Let’s Seek The Benefits The Ideas"
         case .green: return "Let’s Generates Some Ideas!"
@@ -40,6 +41,7 @@ enum RoundType {
         case .black: return .blackCharacter
         case .yellow: return .yellowCharacter
         case .green: return .greenCharacter
+        case .darker_green: return .greenCharacter
         }
     }
 }

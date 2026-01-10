@@ -29,6 +29,10 @@ enum IdeaDetailSegment: String, CaseIterable, Identifiable {
 
 struct IdeaDetailCard: View {
     let ideaText: String
+    let ratingString: String
+    let why: String
+    let evidence: IdeaInsightEvidence
+    let commentCounts: CommentCounts?
     
     @State private var selectedSegment: IdeaDetailSegment = .benefits
     
@@ -36,25 +40,31 @@ struct IdeaDetailCard: View {
         VStack(alignment: .leading, spacing: 16) {
             
             // Idea text
-            Text(ideaText)
-                .font(.system(size: 13))
-                .foregroundColor(Color(.label))
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Idea:")
+                    .font(.labelMD)
+                Text(ideaText)
+                    .font(.bodySM)
+                    .foregroundColor(Color(.label))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             
-            // Rating row (static placeholder)
+            // Rating row
             HStack(spacing: 6) {
                 Text("Rating:")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(Color(.secondaryLabel))
                 
-                Text("Neutral")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(4)
+                ratingPill(for: convertedRating)
                 
                 Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Why: ")
+                    .font(.labelMD)
+                Text(why)
+                    .font(.bodySM)
             }
             
             // Segments (fixed)
@@ -65,7 +75,7 @@ struct IdeaDetailCard: View {
         }
         .padding(16)
         .frame(width: 360, alignment: .topLeading)
-        .background(Color(.systemGray6))
+        .background(AppColor.grayscale10)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -96,8 +106,8 @@ struct IdeaDetailCard: View {
                                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                                 .foregroundColor(
                                     isSelected
-                                    ? Color(red: 0.17, green: 0.34, blue: 0.96)   // blue active
-                                    : Color(.systemGray3)                          // grey inactive
+                                    ? AppColor.Primary.blue
+                                    : AppColor.grayscale40
                                 )
                                 .frame(width: segmentWidth, alignment: .leading)
                         }
@@ -108,12 +118,12 @@ struct IdeaDetailCard: View {
                 // Baseline + underline indicator
                 ZStack(alignment: .leading) {
                     Rectangle()
-                        .fill(Color(.systemGray4))
+                        .fill(AppColor.grayscale40)
                         .frame(height: 1)
                     
                     // Blue underline under selected tab
                     Rectangle()
-                        .fill(Color(red: 0.17, green: 0.34, blue: 0.96))
+                        .fill(AppColor.Primary.blue)
                         .frame(width: segmentWidth * 0.7, height: 2)
                         .offset(x: underlineOffset(segmentWidth: segmentWidth))
                 }
@@ -130,7 +140,7 @@ struct IdeaDetailCard: View {
         case .facts:    index = 2
         }
         // center the underline roughly under the text
-        return index * segmentWidth + segmentWidth * 0.15
+        return index * segmentWidth + segmentWidth * 0
     }
     
     // MARK: - Segment Content
@@ -139,34 +149,89 @@ struct IdeaDetailCard: View {
     private var segmentContent: some View {
         switch selectedSegment {
         case .benefits:
-            // Uses your existing IdeaBubbleView
-            IdeaBubbleView(
-                text: "Fun and engaging for the learners (short attention span these days lol)",
-                type: .yellow,
-                ideaId: 1
-            )
+            if let pros = evidence.prosIds, !pros.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(pros, id: \.id) { item in
+                        IdeaBubbleView(
+                            text: item.text,
+                            type: .yellow,
+                            ideaId: Int(item.id)
+                        )
+                    }
+                }
+            } else {
+                Text("No benefits added yet.")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(.secondaryLabel))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         case .risks:
-            Text("No risks added yet.")
-                .font(.system(size: 12))
-                .foregroundColor(Color(.secondaryLabel))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let risks = evidence.risksIds, !risks.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(risks, id: \.id) { item in
+                        IdeaBubbleView(
+                            text: item.text,
+                            type: .black,
+                            ideaId: Int(item.id)
+                        )
+                    }
+                }
+            } else {
+                Text("No risks added yet.")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(.secondaryLabel))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         case .facts:
-            Text("No facts & info added yet.")
-                .font(.system(size: 12))
-                .foregroundColor(Color(.secondaryLabel))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let facts = evidence.whiteFactsIds, !facts.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(facts, id: \.id) { item in
+                        IdeaBubbleView(
+                            text: item.text,
+                            type: .white,
+                            ideaId: Int(item.id)
+                        )
+                    }
+                }
+            } else {
+                Text("No facts & info added yet.")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(.secondaryLabel))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
+    }
+    
+    // MARK: - Rating Helpers
+    
+    private var convertedRating: IdeaRating {
+        switch ratingString.lowercased() {
+        case "good": return .good
+        case "risky": return .risky
+        default: return .neutral
+        }
+    }
+    
+    @ViewBuilder
+    private func ratingPill(for rating: IdeaRating) -> some View {
+        Text(rating.label)
+            .font(.system(size: 11, weight: .medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(rating.pillBackground)
+            .foregroundColor(rating.pillTextColor)
+            .cornerRadius(4)
     }
 }
 
 // MARK: - Preview
 
-struct IdeaDetailCard_Previews: PreviewProvider {
-    static var previews: some View {
-        IdeaDetailCard(
-            ideaText: "Short videos within categorised playlist on ADA essential informations"
-        )
-        .padding()
-        .previewLayout(.sizeThatFits)
-    }
-}
+//struct IdeaDetailCard_Previews: PreviewProvider {
+//    static var previews: some View {
+//        IdeaDetailCard(
+//            ideaText: "Short videos within categorised playlist on ADA essential informations"
+//        )
+//        .padding()
+//        .previewLayout(.sizeThatFits)
+//    }
+//}

@@ -9,8 +9,10 @@ import SwiftUI
 
 struct SessionRoomView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var navVM: NavigationViewModel
 
     @StateObject private var vm: SessionRoomViewModel
+    @State private var showExitAlert = false
 
     init(id: Int64, isHost: Bool = false) {
         _vm = .init(wrappedValue: .init(id: id, isHost: isHost))
@@ -20,7 +22,8 @@ struct SessionRoomView: View {
 
     var body: some View {
         if vm.isLoading {
-            ProgressView("Loading session...")
+//            ProgressView("Loading session...")
+            PreparingLoadingScreen()
         } else {
             sessionContent
         }
@@ -32,10 +35,10 @@ struct SessionRoomView: View {
                 Header(
                     config: .init(
                         title: vm.roomType.shared.title,
-                        showsBackButton: false,
+                        showsBackButton: true,
                         trailing: .timer(date: vm.deadline)
                     ),
-//                    onBack: { dismiss() }
+                    onBack: { showExitAlert = true }
                 )
                 .padding(.horizontal)
                 .padding(.bottom, 4)
@@ -138,8 +141,14 @@ struct SessionRoomView: View {
 //            if vm.showIntroduction {
 //                SessionIntroductionView(introduction: vm.roomType.shared.introduction)
 //            }
-            if vm.isTimeUp {
+            if vm.isSessionFinished {
+                SessionFinishedView(vm: vm)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.5), value: vm.isSessionFinished)
+            } else if vm.isTimeUp {
                 TimesUpView()
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.5), value: vm.isTimeUp)
             }
         }
         .fullScreenCover(isPresented: $vm.showRoundSummary) {
@@ -147,6 +156,45 @@ struct SessionRoomView: View {
         }
         .sheet(isPresented: $vm.showCommentSheet) {
             CommentSheetView(vm: vm)
+        }
+        .fullScreenCover(isPresented: $vm.showFinalSummary) {
+            FinalSummaryView(vm: vm)
+                .environmentObject(navVM)
+        }
+        .onChange(of: vm.isTimeUp) { _, timeUp in
+            if timeUp {
+                // Dismiss keyboard
+                UIApplication.shared.endEditing()
+                // Close any open sheets
+                vm.showCommentSheet = false
+                // Unfocus text field
+                isTextFieldFocused = false
+            }
+        }
+        .onChange(of: vm.shouldExitToHome) { _, shouldExit in
+            if shouldExit {
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    await MainActor.run {
+                        navVM.popToRoot()
+                    }
+                }
+            }
+        }
+        .alert("Leave Session?", isPresented: $showExitAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Leave", role: .destructive) {
+                vm.cleanup()
+                Task {
+                    // Small delay to allow alert to dismiss first
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    await MainActor.run {
+                        navVM.popToRoot()
+                    }
+                }
+            }
+        } message: {
+            Text("Are you sure you want to leave this session? You'll return to the home screen.")
         }
     }
 }

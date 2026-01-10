@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-enum MessageCardType {
-    case white, green, yellow, black, red, darkGreen
+enum MessageCardType: Int {
+    case white=1, green=2, darkGreen=3, yellow=4, black=5, red=6
     
     var color: Color {
         switch self {

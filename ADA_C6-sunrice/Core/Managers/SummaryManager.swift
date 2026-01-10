@@ -10,7 +10,8 @@ import Combine
 
 @MainActor
 final class SummaryManager: ObservableObject {
-    private let summaryService: SummaryServicing
+    let summaryService: SummaryServicing  // Internal for access from views
+    weak var timerManager: TimerManager?  // Delegate for polling
     
     @Published var summary: IdeaSummary?
     @Published var isLoadingSummary: Bool = false
@@ -20,20 +21,65 @@ final class SummaryManager: ObservableObject {
         self.summaryService = summaryService
     }
     
+    func setTimerManager(_ manager: TimerManager) {
+        self.timerManager = manager
+    }
+    
+    func clearSummary() {
+        summary = nil
+        summaryError = nil
+        isLoadingSummary = false
+        stopFetchingSummary()
+    }
+    
     // MARK: - Summary Operations
     
-    func fetchSummary(sessionId: Int, roundType: RoundType) async {
+    func fetchSummary(sessionId: Int, roundType: RoundType, isHost: Bool) async {
         guard shouldFetchSummary(for: roundType) else {
             print("⏭️ Skipping summary for round type: \(roundType)")
             return
         }
         
         isLoadingSummary = true
-        summaryError = nil
+        summaryError = nil  // Clear previous error for retry
         defer { isLoadingSummary = false }
         
         do {
-            print("📊 Fetching \(roundType) summary for session \(sessionId)...")
+            let ideaType = getIdeaType(for: roundType)
+            
+            // Guests: Poll for existing summary from database
+            if !isHost {
+                print("📊 Guest: Polling for summary from database...")
+                
+                guard let timerManager = timerManager else {
+                    print("❌ TimerManager not set, cannot poll for summary")
+                    return
+                }
+                
+                // Register polling action
+                timerManager.registerPollingAction(id: "summary_fetch") { [weak self] in
+                    guard let self = self else { return }
+                    
+                    do {
+                        if let existingSummary = try await self.summaryService.fetchExistingSummary(sessionId: sessionId, roundType: ideaType) {
+                            await MainActor.run {
+                                self.summary = existingSummary
+                            }
+                            print("✅ Guest: Retrieved summary with \(existingSummary.themes.count) themes")
+                            // Unregister after success
+                            timerManager.unregisterPollingAction(id: "summary_fetch")
+                        } else {
+                            print("⏳ Guest: Summary not ready yet...")
+                        }
+                    } catch {
+                        print("⚠️ Guest: Error polling for summary: \(error)")
+                    }
+                }
+                return
+            }
+            
+            // Host: Generate new summary
+            print("📊 Host: Generating summary for session \(sessionId)...")
             
             let response: SummarizeSessionResponse<IdeaSummary>
             
@@ -51,7 +97,7 @@ final class SummaryManager: ObservableObject {
             
             if response.success {
                 summary = response.summary
-                print("✅ Summary fetched successfully with \(response.summary.themes.count) themes")
+                print("✅ Host: Summary generated successfully with \(response.summary.themes.count) themes")
             } else {
                 summaryError = "Summary generation failed"
                 print("❌ Summary generation failed")
@@ -62,9 +108,14 @@ final class SummaryManager: ObservableObject {
         }
     }
     
-    func clearSummary() {
-        summary = nil
-        summaryError = nil
+//    func clearSummary() {
+//        summary = nil
+//        summaryError = nil
+//        stopFetchingSummary()
+//    }
+    
+    func stopFetchingSummary() {
+        timerManager?.unregisterPollingAction(id: "summary_fetch")
     }
     
     // MARK: - Helper Methods
@@ -76,6 +127,16 @@ final class SummaryManager: ObservableObject {
             return true
         default:
             return false
+        }
+    }
+    
+    private func getIdeaType(for roundType: RoundType) -> Int {
+        // Map RoundType to idea_type in database
+        switch roundType {
+        case .white: return 1
+        case .green: return 2
+        case .red: return 6
+        default: return 0
         }
     }
 }

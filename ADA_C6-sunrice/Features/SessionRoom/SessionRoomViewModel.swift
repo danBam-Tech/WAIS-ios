@@ -48,14 +48,16 @@ final class SessionRoomViewModel: ObservableObject {
     private let sessionService: SessionServicing
     let ideaService: IdeaServicing  // Public for CommentSheetView
     private let summaryService: SummaryServicing
+    private let insightService: IdeaInsightServicing
     
-    // Managers
-    private let roundManager: RoundManager
+    // Managers (internal for SummarySessionCard access)
+    let roundManager: RoundManager
     private let timerManager: TimerManager
-    private let ideaManager: IdeaManager
-    private let summaryManager: SummaryManager
+    let ideaManager: IdeaManager
+    let summaryManager: SummaryManager
+    private let insightManager: IdeaInsightManager
     
-    private let sessionId: Int64
+    let sessionId: Int64
     let isHost: Bool
     
     // MARK: - UI State
@@ -68,6 +70,10 @@ final class SessionRoomViewModel: ObservableObject {
     @Published var isTimeUp: Bool = false
     @Published var isLoading: Bool = true
     @Published var showRoundSummary: Bool = false
+    @Published var shouldExitToHome: Bool = false
+    @Published var isSessionFinished: Bool = false
+    @Published var showFinalSummary: Bool = false
+    @Published var hasFetchedInsights: Bool = false
     
     // Comment sheet
     @Published var selectedIdeaForComment: IdeaDTO? = nil
@@ -85,6 +91,12 @@ final class SessionRoomViewModel: ObservableObject {
     var isLoadingSummary: Bool { summaryManager.isLoadingSummary }
     var summaryError: String? { summaryManager.summaryError }
     
+    // MARK: - Delegated State (from IdeaInsightManager)
+    var ideaInsights: [IdeaInsightDTO] { insightManager.insights }
+    var isAnalyzingIdeas: Bool { insightManager.isAnalyzing }
+    var analysisProgress: String { insightManager.analysisProgress }
+    var analysisError: String? { insightManager.analysisError }
+    
     // MARK: - Session State
     private var session: SessionDTO?
     private var sequence: SequenceDTO?
@@ -94,18 +106,24 @@ final class SessionRoomViewModel: ObservableObject {
 
     // MARK: - Initialization
     
-    init(id: Int64, isHost: Bool = false, sessionService: SessionServicing, ideaService: IdeaServicing, summaryService: SummaryServicing) {
+    init(id: Int64, isHost: Bool = false, sessionService: SessionServicing, ideaService: IdeaServicing, summaryService: SummaryServicing, insightService: IdeaInsightServicing) {
         self.sessionId = id
         self.isHost = isHost
         self.sessionService = sessionService
         self.ideaService = ideaService
         self.summaryService = summaryService
+        self.insightService = insightService
         
         // Initialize managers
         self.roundManager = RoundManager(sessionService: sessionService)
         self.timerManager = TimerManager(sessionService: sessionService)
         self.ideaManager = IdeaManager(ideaService: ideaService)
         self.summaryManager = SummaryManager(summaryService: summaryService)
+        self.insightManager = IdeaInsightManager(insightService: insightService)
+        
+        // Inject TimerManager into managers that need polling
+        summaryManager.setTimerManager(timerManager)
+        insightManager.setTimerManager(timerManager)
         
         // Setup bindings to propagate manager changes
         setupManagerBindings()
@@ -122,7 +140,8 @@ final class SessionRoomViewModel: ObservableObject {
             isHost: isHost,
             sessionService: SessionService(client: supabaseManager),
             ideaService: IdeaService(client: supabaseManager),
-            summaryService: SummaryService(client: supabaseManager)
+            summaryService: SummaryService(client: supabaseManager),
+            insightService: IdeaInsightService(client: supabaseManager)
         )
     }
     
@@ -134,6 +153,11 @@ final class SessionRoomViewModel: ObservableObject {
         
         // Propagate SummaryManager changes to trigger view updates
         summaryManager.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+        
+        // Propagate IdeaInsightManager changes to trigger view updates
+        insightManager.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
     }
@@ -193,6 +217,21 @@ final class SessionRoomViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Cleanup
+    
+    func cleanup() {
+        print("🧹 Cleaning up session resources...")
+        
+        // Cancel timer if running
+        timerManager.cancelAllTimers()
+        
+        // Clear all data
+        ideaManager.clearLocalIdeas()
+        summaryManager.clearSummary()
+        
+        print("✅ Session cleanup complete")
+    }
+    
     private func fetchCurrentUserId() async {
         do {
             struct UserRoleSession: Decodable {
@@ -230,6 +269,19 @@ final class SessionRoomViewModel: ObservableObject {
             isTimeUp = false
             showInstruction = true
             
+            // Host: Save deadline to database for guest synchronization
+            if isHost {
+                do {
+                    try await sessionService.updateRoundDeadline(
+                        sessionId: sessionId,
+                        deadline: deadline
+                    )
+                    print("⏱️ Host: Deadline saved to database: \(deadline)")
+                } catch {
+                    print("❌ Error updating deadline: \(error)")
+                }
+            }
+            
             // Fetch ideas from previous rounds (cumulative)
             if currentRound > 1 {
                 print("📋 Fetching ALL ideas from previous rounds...")
@@ -243,20 +295,45 @@ final class SessionRoomViewModel: ObservableObject {
     // MARK: - Timer Management
     
     private func startHostTimer() {
-        timerManager.startHostTimer(deadline: deadline) { [weak self] in
+        timerManager.startHostTimer(getDeadline: { [weak self] in
+            return self?.deadline ?? Date()
+        }) { [weak self] in
             await self?.handleTimeUp()
         }
     }
     
     private func startGuestPolling() {
         // Start deadline timer
-        timerManager.startGuestDeadlineTimer(deadline: deadline) { [weak self] in
+        timerManager.startGuestDeadlineTimer(getDeadline: { [weak self] in
+            return self?.deadline ?? Date()
+        }) { [weak self] in
             await self?.handleTimeUp()
         }
         
         // Start polling for round changes
         timerManager.startPollingRound(sessionId: sessionId, currentRound: currentRound) { [weak self] newRound in
             await self?.handleRoundChange(newRound: newRound)
+        }
+        
+        // Start polling for deadline updates (timer synchronization)
+        timerManager.registerPollingAction(id: "deadline_sync") { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let updatedSession = try await self.sessionService.fetchSession(id: self.sessionId)
+                
+                if let newDeadline = updatedSession.current_round_deadline {
+                    await MainActor.run {
+                        // Only update if deadline changed significantly (> 1 second difference)
+                        if abs(newDeadline.timeIntervalSince(self.deadline)) > 1 {
+                            self.deadline = newDeadline
+                            print("⏱️ Guest: Deadline synced to \(newDeadline)")
+                        }
+                    }
+                }
+            } catch {
+                print("❌ Error fetching deadline: \(error)")
+            }
         }
     }
     
@@ -281,11 +358,32 @@ final class SessionRoomViewModel: ObservableObject {
     }
     
     private func handleRoundChange(newRound: Int64) async {
+        // Unregister deadline polling for old round
+        timerManager.unregisterPollingAction(id: "deadline_sync")
+        
         currentRound = newRound
         showRoundSummary = false
+        
+        // Clear previous round's summary
+        summaryManager.clearSummary()
+        
+        // Check if session is finished (no more rounds after this one)
+        if !roundManager.hasNextRound(after: currentRound - 1) {
+            print("📊 Guest: Session finished, no more rounds")
+            
+            // Small delay to ensure RoundSummaryView dismisses before showing SessionFinishedView
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            
+            await MainActor.run {
+                isSessionFinished = true
+            }
+            return
+        }
+        
+        // Load next round
         await loadRoundType(round: currentRound)
         
-        // Restart guest timers with new deadline and round
+        // Restart guest timers with new deadline and round (will re-register deadline polling)
         if !isHost {
             startGuestPolling()
         }
@@ -303,23 +401,25 @@ final class SessionRoomViewModel: ObservableObject {
     
     private func advanceToNextRound() async {
         showRoundSummary = false
+        isTimeUp = false
         
         let nextRound = currentRound + 1
         
+        // Always update the database current_round so guests can detect the change
+        do {
+            try await sessionService.updateCurrentRound(sessionId: sessionId, round: nextRound)
+            print("📊 Host: Updated current_round to \(nextRound) in database")
+        } catch {
+            print("❌ Error updating round: \(error)")
+        }
+        
         if roundManager.hasNextRound(after: currentRound) {
             currentRound = nextRound
-            
-            // Update current_round in database
-            do {
-                try await sessionService.updateCurrentRound(sessionId: sessionId, round: currentRound)
-                await loadRoundType(round: currentRound)
-                startHostTimer()
-            } catch {
-                print("Error updating round: \(error)")
-            }
+            await loadRoundType(round: currentRound)
+            startHostTimer()
         } else {
-            print("Session complete!")
-            // TODO: Navigate to session summary or end screen
+            print("📊 Host: Session complete!")
+            isSessionFinished = true
         }
     }
     
@@ -415,7 +515,62 @@ final class SessionRoomViewModel: ObservableObject {
             return
         }
         
-        await summaryManager.fetchSummary(sessionId: Int(sessionId), roundType: roundType)
+        await summaryManager.fetchSummary(sessionId: Int(sessionId), roundType: roundType, isHost: isHost)
+    }
+    
+    // MARK: - Idea Analysis
+    
+    func analyzeIdeas() async {
+        hasFetchedInsights = true
+        
+        // First, fetch all green ideas from database
+        print("📥 Fetching green ideas for analysis...")
+        do {
+            try await ideaManager.fetchIdeas(
+                sessionId: sessionId,
+                typeId: getGreenTypeId()
+            )
+        } catch {
+            print("❌ Error fetching green ideas: \(error)")
+            return
+        }
+        
+        // Get all green idea IDs
+        let greenIds = serverIdeas
+            .filter { $0.type_id == getGreenTypeId() }
+            .map { Int($0.id) }
+        
+        guard !greenIds.isEmpty else {
+            print("⏭️ No green ideas to analyze")
+            return
+        }
+        
+        print("✅ Found \(greenIds.count) green ideas to analyze")
+        
+        await insightManager.analyzeAllIdeas(
+            sessionId: Int(sessionId),
+            greenIdeaIds: greenIds,
+            isHost: isHost
+        )
+    }
+    
+    func navigateToFinalSummary() {
+        showFinalSummary = true
+    }
+    
+    func refreshInsightsFromDatabase() async {
+        print("📥 Refreshing insights from database...")
+        do {
+            let freshInsights = try await insightManager.insightService.fetchIdeaInsights(
+                sessionId: Int(sessionId)
+            )
+            await MainActor.run {
+                insightManager.insights = freshInsights
+                print("✅ Refreshed \(freshInsights.count) insights")
+            }
+        } catch {
+            print("❌ Error refreshing insights: \(error)")
+        }
     }
     
     // MARK: - Helper Methods
@@ -452,6 +607,19 @@ final class SessionRoomViewModel: ObservableObject {
     func onTapExtensionButton() {
         if isHost {
             deadline.addTimeInterval(30)
+            
+            // Persist to database so guests can synchronize
+            Task {
+                do {
+                    try await sessionService.updateRoundDeadline(
+                        sessionId: sessionId,
+                        deadline: deadline
+                    )
+                    print("⏱️ Host: Extended deadline by 30s, saved to database")
+                } catch {
+                    print("❌ Error extending deadline: \(error)")
+                }
+            }
         } else {
             // TODO: send request time extension to the host
         }
