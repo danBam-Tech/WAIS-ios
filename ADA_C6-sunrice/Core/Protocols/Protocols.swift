@@ -56,5 +56,6 @@ protocol SummaryServicing {
 
 protocol IdeaInsightServicing {
     func analyzeIdea(sessionId: Int, greenIdeaId: Int) async throws -> AnalyzeIdeaResponse
+    func analyzeIdeasBatch(sessionId: Int, greenIdeaIds: [Int]?) async throws -> AnalyzeIdeasBatchResponse
     func fetchIdeaInsights(sessionId: Int) async throws -> [IdeaInsightDTO]
 }

@@ -523,33 +523,10 @@ final class SessionRoomViewModel: ObservableObject {
     func analyzeIdeas() async {
         hasFetchedInsights = true
         
-        // First, fetch all green ideas from database
-        print("📥 Fetching green ideas for analysis...")
-        do {
-            try await ideaManager.fetchIdeas(
-                sessionId: sessionId,
-                typeId: getGreenTypeId()
-            )
-        } catch {
-            print("❌ Error fetching green ideas: \(error)")
-            return
-        }
-        
-        // Get all green idea IDs
-        let greenIds = serverIdeas
-            .filter { $0.type_id == getGreenTypeId() }
-            .map { Int($0.id) }
-        
-        guard !greenIds.isEmpty else {
-            print("⏭️ No green ideas to analyze")
-            return
-        }
-        
-        print("✅ Found \(greenIds.count) green ideas to analyze")
+        print("🚀 Starting batch idea analysis...")
         
         await insightManager.analyzeAllIdeas(
             sessionId: Int(sessionId),
-            greenIdeaIds: greenIds,
             isHost: isHost
         )
     }

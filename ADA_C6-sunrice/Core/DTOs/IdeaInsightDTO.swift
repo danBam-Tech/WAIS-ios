@@ -83,3 +83,23 @@ struct AnalyzeIdeaResponse: Codable {
         case summaryId = "summary_id"
     }
 }
+
+// MARK: - Batch Analysis Response
+
+struct IdeaAnalysisError: Codable {
+    let ideaId: Int
+    let error: String
+    
+    enum CodingKeys: String, CodingKey {
+        case ideaId = "idea_id"
+        case error
+    }
+}
+
+struct AnalyzeIdeasBatchResponse: Codable {
+    let success: Bool
+    let total: Int
+    let analyzed: Int
+    let failed: Int
+    let errors: [IdeaAnalysisError]?
+}
