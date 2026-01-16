@@ -37,6 +37,28 @@ final class IdeaInsightService: IdeaInsightServicing {
         return response
     }
     
+    // Call analyze-ideas-batch edge function to analyze all or specific green ideas
+    func analyzeIdeasBatch(sessionId: Int, greenIdeaIds: [Int]? = nil) async throws -> AnalyzeIdeasBatchResponse {
+        struct AnalyzeIdeasBatchRequest: Encodable {
+            let session_id: Int
+            let green_idea_ids: [Int]?
+        }
+        
+        let requestBody = AnalyzeIdeasBatchRequest(
+            session_id: sessionId,
+            green_idea_ids: greenIdeaIds
+        )
+        
+        let response: AnalyzeIdeasBatchResponse = try await client.functions.invoke(
+            "analyze-ideas-batch",
+            options: FunctionInvokeOptions(
+                body: requestBody
+            )
+        )
+        
+        return response
+    }
+    
     // Fetch all idea insights for a session from database
     func fetchIdeaInsights(sessionId: Int) async throws -> [IdeaInsightDTO] {
         let response: [IdeaInsightDTO] = try await client
