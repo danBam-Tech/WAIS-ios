@@ -74,6 +74,7 @@ final class SessionRoomViewModel: ObservableObject {
     @Published var isSessionFinished: Bool = false
     @Published var showFinalSummary: Bool = false
     @Published var hasFetchedInsights: Bool = false
+    @Published var isSendingMessage: Bool = false
     
     // Comment sheet
     @Published var selectedIdeaForComment: IdeaDTO? = nil
@@ -427,16 +428,31 @@ final class SessionRoomViewModel: ObservableObject {
     
     func sendMessage() {
         guard let typeId = currentTypeId else { return }
+        guard !isSendingMessage else { return }  // Prevent multiple clicks
         
-        ideaManager.addLocalIdea(text: inputText, typeId: typeId)
+        // Set sending state
+        isSendingMessage = true
         
-        // Also add to messages for backward compatibility
-        let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedText.isEmpty {
-            messages.append(Message(text: trimmedText, type: roomType.shared.type))
+        // Simulate async operation for smoother UX
+        Task {
+            // Add the idea locally
+            await MainActor.run {
+                ideaManager.addLocalIdea(text: inputText, typeId: typeId)
+                
+                // Also add to messages for backward compatibility
+                let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmedText.isEmpty {
+                    messages.append(Message(text: trimmedText, type: roomType.shared.type))
+                }
+                
+                inputText = ""
+            }
+            
+            // Reset sending state
+            await MainActor.run {
+                isSendingMessage = false
+            }
         }
-        
-        inputText = ""
     }
     
     private func uploadLocalIdeas() async {
@@ -466,6 +482,9 @@ final class SessionRoomViewModel: ObservableObject {
             print("❌ Cannot submit comment: missing data")
             return
         }
+        guard !isSendingMessage else { return }  // Prevent multiple clicks
+        
+        isSendingMessage = true
         
         Task {
             do {
@@ -484,6 +503,11 @@ final class SessionRoomViewModel: ObservableObject {
                 }
             } catch {
                 print("❌ Error submitting comment: \(error)")
+            }
+            
+            // Reset sending state
+            await MainActor.run {
+                isSendingMessage = false
             }
         }
     }

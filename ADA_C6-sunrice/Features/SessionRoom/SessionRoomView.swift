@@ -112,7 +112,7 @@ struct SessionRoomView: View {
 
                 // Input area - only show in non-comment rounds
                 if !vm.isCommentRound {
-                    InputArea(inputText: $vm.inputText, action: vm.sendMessage)
+                    InputArea(inputText: $vm.inputText, isSending: vm.isSendingMessage, action: vm.sendMessage)
                 } else {
                     // In comment rounds, show instruction to tap plus button
                     HStack {
