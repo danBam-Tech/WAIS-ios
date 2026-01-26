@@ -22,7 +22,6 @@ struct SessionRoomView: View {
 
     var body: some View {
         if vm.isLoading {
-//            ProgressView("Loading session...")
             PreparingLoadingScreen()
         } else {
             sessionContent
@@ -137,10 +136,7 @@ struct SessionRoomView: View {
                     onTap: vm.closeInstruction
                 )
             }
-            // TODO: finish logic; implement current & total players
-//            if vm.showIntroduction {
-//                SessionIntroductionView(introduction: vm.roomType.shared.introduction)
-//            }
+
             if vm.isSessionFinished {
                 SessionFinishedView(vm: vm)
                     .transition(.opacity)
