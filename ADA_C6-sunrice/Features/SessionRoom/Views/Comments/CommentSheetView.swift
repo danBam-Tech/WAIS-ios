@@ -66,7 +66,7 @@ struct CommentSheetView: View {
                 
                 // Input area at bottom
                 VStack(spacing: 12) {
-                    InputArea(inputText: $commentText, action: submitComment)
+                    InputArea(inputText: $commentText, isSending: vm.isSendingMessage, action: submitComment)
                 }
                 .ignoresSafeArea()
             }

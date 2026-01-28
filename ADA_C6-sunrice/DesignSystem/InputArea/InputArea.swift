@@ -9,6 +9,7 @@ import SwiftUI
 
 struct InputArea: View {
     @Binding var inputText: String
+    var isSending: Bool = false
     var action: () -> Void = {}
     
     @FocusState private var isTextFieldFocused: Bool
@@ -27,19 +28,33 @@ struct InputArea: View {
                 .frame(maxHeight: 35)
                 .focused($isTextFieldFocused)
                 .onSubmit {
-                    action()
+                    if !isSending {
+                        action()
+                    }
                 }
             
-            Button(action: action) {
+            Button {
+                if !isSending && !inputText.isEmpty {
+                    action()
+                }
+            } label: {
                 Circle()
                     .fill(AppColor.blue10)
                     .frame(width: 35, height: 35)
                     .overlay(
-                        Image(systemName: "paperplane.fill")
-                            .foregroundColor(inputText.isEmpty ? AppColor.grayscale30 : AppColor.Primary.gray)
+                        Group {
+                            if isSending {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.7)
+                            } else {
+                                Image(systemName: "paperplane.fill")
+                                    .foregroundColor(inputText.isEmpty ? AppColor.grayscale30 : AppColor.Primary.gray)
+                            }
+                        }
                     )
             }
-            .disabled(inputText.isEmpty)
+            .disabled(inputText.isEmpty || isSending)
         }
         .padding(16)
         .background(

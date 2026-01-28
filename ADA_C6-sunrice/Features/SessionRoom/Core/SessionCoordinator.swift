@@ -1,9 +1,9 @@
 //
-//  SessionRoomViewModel.swift
+//  SessionCoordinator.swift
 //  ADA_C6-sunrice
 //
-//  Created by Hanna Nadia Savira on 19/11/25.
-//  Refactored by Antigravity on 24/11/25.
+//  Created by Antigravity on 23/01/26.
+//  Coordinates session lifecycle, managers, and ViewModels.
 //
 
 import Combine
@@ -11,103 +11,71 @@ import Foundation
 import PostgREST
 import Supabase
 
-struct RoomPart {
-    let title: String
-    let type: MessageCardType
-}
-
-enum RoomType {
-    case fact, idea, buildon, benefit, risk, feeling
-
-    var shared: RoomPart {
-        switch self {
-        case .fact:
-            return .init(title: "Facts & Info", type: .white)
-        case .idea:
-            return .init(title: "Idea", type: .green)
-        case .buildon:
-            return .init(title: "Build On", type: .darkGreen)
-        case .benefit:
-            return .init(title: "Benefits", type: .yellow)
-        case .risk:
-            return .init(title: "Risks", type: .black)
-        case .feeling:
-            return .init(title: "Feeling", type: .red)
-        }
-    }
-}
-
-struct Message {
-    let text: String
-    let type: MessageCardType
-}
-
 @MainActor
-final class SessionRoomViewModel: ObservableObject {
+final class SessionCoordinator: ObservableObject {
     // MARK: - Dependencies
     private let sessionService: SessionServicing
-    let ideaService: IdeaServicing  // Public for CommentSheetView
+    private let ideaService: IdeaServicing
     private let summaryService: SummaryServicing
     private let insightService: IdeaInsightServicing
     
-    // Managers (internal for SummarySessionCard access)
+    // MARK: - Managers
     let roundManager: RoundManager
     private let timerManager: TimerManager
     let ideaManager: IdeaManager
     let summaryManager: SummaryManager
-    private let insightManager: IdeaInsightManager
+    let insightManager: IdeaInsightManager
     
+    // MARK: - Sub-ViewModels
+    let inputViewModel: SessionInputViewModel
+    let roundSummaryViewModel: RoundSummaryViewModel
+    let finalSummaryViewModel: FinalSummaryViewModel
+    
+    // MARK: - Session State
     let sessionId: Int64
     let isHost: Bool
     
+    private var session: SessionDTO?
+    private var sequence: SequenceDTO?
+    private(set) var currentRound: Int64 = 1
+    private(set) var currentTypeId: Int64? = nil
+    private(set) var currentUserId: Int64? = nil
+
+    
+    // MARK: - Navigation State
+    @Published var showRoundSummary: Bool = false
+    @Published var showFinalSummary: Bool = false
+    @Published var isSessionFinished: Bool = false
+    @Published var isTimeUp: Bool = false
+    @Published var shouldExitToHome: Bool = false
+    
     // MARK: - UI State
-    @Published var inputText: String = ""
-    @Published var roomType: SessionRoom = .fact
-    @Published var showInstruction: Bool = true
+    @Published var isLoading: Bool = true
     @Published var deadline: Date = Date()
     @Published var prompt: String = ""
-    @Published var messages: [Message] = []  // For backward compatibility
-    @Published var isTimeUp: Bool = false
-    @Published var isLoading: Bool = true
-    @Published var showRoundSummary: Bool = false
-    @Published var shouldExitToHome: Bool = false
-    @Published var isSessionFinished: Bool = false
-    @Published var showFinalSummary: Bool = false
-    @Published var hasFetchedInsights: Bool = false
+    @Published var roomType: SessionRoom = .fact
+    @Published var showInstruction: Bool = true
     
-    // Comment sheet
+    // MARK: - Comment State
     @Published var selectedIdeaForComment: IdeaDTO? = nil
     @Published var showCommentSheet: Bool = false
     
-    // MARK: - Delegated State (from IdeaManager)
-    var localIdeas: [LocalIdea] { ideaManager.localIdeas }
-    var serverIdeas: [IdeaDTO] { ideaManager.serverIdeas }
-    var serverComments: [IdeaCommentDTO] { ideaManager.serverComments }
-    var commentCounts: [Int64: CommentCounts] { ideaManager.commentCounts }
-    var isUploadingIdeas: Bool { ideaManager.isUploadingIdeas }
+    // MARK: - Analysis State
+    @Published var hasFetchedInsights: Bool = false
     
-    // MARK: - Delegated State (from SummaryManager)
-    var summary: IdeaSummary? { summaryManager.summary }
-    var isLoadingSummary: Bool { summaryManager.isLoadingSummary }
-    var summaryError: String? { summaryManager.summaryError }
+    private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Delegated State (from IdeaInsightManager)
-    var ideaInsights: [IdeaInsightDTO] { insightManager.insights }
-    var isAnalyzingIdeas: Bool { insightManager.isAnalyzing }
-    var analysisProgress: String { insightManager.analysisProgress }
-    var analysisError: String? { insightManager.analysisError }
-    
-    // MARK: - Session State
-    private var session: SessionDTO?
-    private var sequence: SequenceDTO?
-    private var currentRound: Int64 = 1
-    var currentTypeId: Int64? = nil
-    private var currentUserId: Int64? = nil
-
     // MARK: - Initialization
     
-    init(id: Int64, isHost: Bool = false, sessionService: SessionServicing, ideaService: IdeaServicing, summaryService: SummaryServicing, insightService: IdeaInsightServicing) {
-        self.sessionId = id
+    init(
+        sessionId: Int64,
+        isHost: Bool = false,
+        sessionService: SessionServicing,
+        ideaService: IdeaServicing,
+        summaryService: SummaryServicing,
+        insightService: IdeaInsightServicing
+    ) {
+        self.sessionId = sessionId
         self.isHost = isHost
         self.sessionService = sessionService
         self.ideaService = ideaService
@@ -120,6 +88,28 @@ final class SessionRoomViewModel: ObservableObject {
         self.ideaManager = IdeaManager(ideaService: ideaService)
         self.summaryManager = SummaryManager(summaryService: summaryService)
         self.insightManager = IdeaInsightManager(insightService: insightService)
+        
+        // Initialize sub-ViewModels
+        self.inputViewModel = SessionInputViewModel(
+            sessionId: sessionId,
+            ideaManager: ideaManager,
+            roundManager: roundManager
+        )
+        self.roundSummaryViewModel = RoundSummaryViewModel(
+            sessionId: sessionId,
+            isHost: isHost,
+            summaryManager: summaryManager,
+            ideaManager: ideaManager
+        )
+        self.finalSummaryViewModel = FinalSummaryViewModel(
+            sessionId: sessionId,
+            insightManager: insightManager
+        )
+        
+        // Set up bidirectional references
+        inputViewModel.coordinator = self
+        roundSummaryViewModel.coordinator = self
+        finalSummaryViewModel.coordinator = self
         
         // Inject TimerManager into managers that need polling
         summaryManager.setTimerManager(timerManager)
@@ -134,9 +124,9 @@ final class SessionRoomViewModel: ObservableObject {
     }
     
     // Convenience initializer for default services
-    convenience init(id: Int64, isHost: Bool = false) {
+    convenience init(sessionId: Int64, isHost: Bool = false) {
         self.init(
-            id: id,
+            sessionId: sessionId,
             isHost: isHost,
             sessionService: SessionService(client: supabaseManager),
             ideaService: IdeaService(client: supabaseManager),
@@ -144,6 +134,8 @@ final class SessionRoomViewModel: ObservableObject {
             insightService: IdeaInsightService(client: supabaseManager)
         )
     }
+    
+    // MARK: - Manager Bindings
     
     private func setupManagerBindings() {
         // Propagate IdeaManager changes to trigger view updates
@@ -161,8 +153,6 @@ final class SessionRoomViewModel: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
     }
-    
-    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Session Loading
     
@@ -199,6 +189,9 @@ final class SessionRoomViewModel: ObservableObject {
             // Fetch current user ID
             await fetchCurrentUserId()
             
+            // Configure input ViewModel
+            inputViewModel.configure(typeId: currentTypeId, userId: currentUserId)
+            
             // Start timer or polling based on role
             if isHost {
                 startHostTimer()
@@ -215,21 +208,6 @@ final class SessionRoomViewModel: ObservableObject {
         } catch {
             print("Error loading session data: \(error)")
         }
-    }
-    
-    // MARK: - Cleanup
-    
-    func cleanup() {
-        print("🧹 Cleaning up session resources...")
-        
-        // Cancel timer if running
-        timerManager.cancelAllTimers()
-        
-        // Clear all data
-        ideaManager.clearLocalIdeas()
-        summaryManager.clearSummary()
-        
-        print("✅ Session cleanup complete")
     }
     
     private func fetchCurrentUserId() async {
@@ -268,6 +246,9 @@ final class SessionRoomViewModel: ObservableObject {
             deadline = roundInfo.deadline
             isTimeUp = false
             showInstruction = true
+            
+            // Update input ViewModel
+            inputViewModel.configure(typeId: currentTypeId, userId: currentUserId)
             
             // Host: Save deadline to database for guest synchronization
             if isHost {
@@ -341,7 +322,7 @@ final class SessionRoomViewModel: ObservableObject {
         isTimeUp = true
         
         // Upload local ideas to database
-        await uploadLocalIdeas()
+        await inputViewModel.uploadLocalIdeas()
         
         // Wait for other users to upload
         let waitTime = isHost ? 2 : 3
@@ -423,69 +404,11 @@ final class SessionRoomViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Message/Idea Input
-    
-    func sendMessage() {
-        guard let typeId = currentTypeId else { return }
-        
-        ideaManager.addLocalIdea(text: inputText, typeId: typeId)
-        
-        // Also add to messages for backward compatibility
-        let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedText.isEmpty {
-            messages.append(Message(text: trimmedText, type: roomType.shared.type))
-        }
-        
-        inputText = ""
-    }
-    
-    private func uploadLocalIdeas() async {
-        guard let userId = currentUserId else {
-            print("❌ Error: User ID not found for upload")
-            return
-        }
-        
-        do {
-            try await ideaManager.uploadLocalIdeas(sessionId: sessionId, userId: userId)
-        } catch {
-            print("❌ Error uploading ideas: \(error)")
-        }
-    }
-    
     // MARK: - Comments
     
     func openCommentSheet(for idea: IdeaDTO) {
         selectedIdeaForComment = idea
         showCommentSheet = true
-    }
-    
-    func submitComment(text: String, completion: @escaping () -> Void = {}) {
-        guard let idea = selectedIdeaForComment,
-              let typeId = currentTypeId,
-              let userId = currentUserId else {
-            print("❌ Cannot submit comment: missing data")
-            return
-        }
-        
-        Task {
-            do {
-                try await ideaManager.submitComment(
-                    ideaId: idea.id,
-                    text: text,
-                    typeId: typeId,
-                    userId: userId
-                )
-                
-                // Refresh comment counts
-               try await ideaManager.fetchCommentCounts(roundManager: roundManager)
-                
-                await MainActor.run {
-                    completion()
-                }
-            } catch {
-                print("❌ Error submitting comment: \(error)")
-            }
-        }
     }
     
     func fetchCommentCounts() async {
@@ -502,20 +425,6 @@ final class SessionRoomViewModel: ObservableObject {
         } catch {
             print("❌ Error fetching comments: \(error)")
         }
-    }
-    
-    func fetchSummary() async {
-        guard let typeId = currentTypeId else {
-            print("⏭️ No typeId available for summary")
-            return
-        }
-        
-        guard let roundType = getCurrentRoundType(typeId: typeId) else {
-            print("⏭️ No summary available for this round type")
-            return
-        }
-        
-        await summaryManager.fetchSummary(sessionId: Int(sessionId), roundType: roundType, isHost: isHost)
     }
     
     // MARK: - Idea Analysis
@@ -535,22 +444,11 @@ final class SessionRoomViewModel: ObservableObject {
         showFinalSummary = true
     }
     
-    func refreshInsightsFromDatabase() async {
-        print("📥 Refreshing insights from database...")
-        do {
-            let freshInsights = try await insightManager.insightService.fetchIdeaInsights(
-                sessionId: Int(sessionId)
-            )
-            await MainActor.run {
-                insightManager.insights = freshInsights
-                print("✅ Refreshed \(freshInsights.count) insights")
-            }
-        } catch {
-            print("❌ Error refreshing insights: \(error)")
-        }
-    }
-    
     // MARK: - Helper Methods
+    
+    var isCommentRound: Bool {
+        return roundManager.isCommentRound(typeId: currentTypeId)
+    }
     
     func getGreenTypeId() -> Int64? {
         return roundManager.getGreenTypeId()
@@ -560,12 +458,8 @@ final class SessionRoomViewModel: ObservableObject {
         return roundManager.getMessageCardType(for: typeId)
     }
     
-    var isCommentRound: Bool {
-        return roundManager.isCommentRound(typeId: currentTypeId)
-    }
-    
-    private func getCurrentRoundType(typeId: Int64) -> RoundType? {
-        guard let sequence = sequence else { return nil }
+    func getCurrentRoundType() -> RoundType? {
+        guard let typeId = currentTypeId, let sequence = sequence else { return nil }
         
         switch typeId {
         case sequence.first_round: return .white
@@ -602,7 +496,24 @@ final class SessionRoomViewModel: ObservableObject {
         }
     }
     
+    func exitToHome() {
+        shouldExitToHome = true
+    }
+    
     // MARK: - Cleanup
+    
+    func cleanup() {
+        print("🧹 Cleaning up session resources...")
+        
+        // Cancel timer if running
+        timerManager.cancelAllTimers()
+        
+        // Clear all data
+        ideaManager.clearLocalIdeas()
+        summaryManager.clearSummary()
+        
+        print("✅ Session cleanup complete")
+    }
     
     deinit {
         timerManager.cancelAllTimersFromDeinit()
