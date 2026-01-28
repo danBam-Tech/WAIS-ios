@@ -46,5 +46,5 @@ struct ReviewSessionView: View {
 }
 
 #Preview {
-    ReviewSessionView(vm: CreateSessionViewModel())
+    ReviewSessionView(vm: CreateSessionViewModel(socketManager: WebSocketManager()))
 }

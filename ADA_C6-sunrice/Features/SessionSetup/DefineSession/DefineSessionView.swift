@@ -45,5 +45,5 @@ struct DefineSessionView: View {
 
 
 #Preview {
-    DefineSessionView(vm: CreateSessionViewModel())
+    DefineSessionView(vm: CreateSessionViewModel(socketManager: WebSocketManager()))
 }
