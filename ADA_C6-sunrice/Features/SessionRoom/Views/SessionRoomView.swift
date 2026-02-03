@@ -155,6 +155,7 @@ struct SessionRoomView: View {
                     socketManager.sendRequest(SocketRequest(action: .time_addition, message: ""))
                     socketManager.isTimeRequest = false
                     socketManager.timeRequester = ""
+                    vm.onTapExtensionButton()
                 }
             }
             
