@@ -13,14 +13,18 @@ final class WebSocketManager: ObservableObject {
     @Published var conversations = [ConversationDTO]()
     @Published var isConnected = false
     @Published var name = ""
+    @Published var isHost = false
+    @Published var isTimeRequest = false
+    @Published var timeRequester = ""
     
     private var webSocketTask: URLSessionWebSocketTask?
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     
-    func connect(roomCode: String, name: String) {
-        guard let url = URL(string: "wss://wais.tudemaha.my.id/rooms/ws?room_code=\(roomCode)&username=\(name)") else { return }
+    func connect(roomCode: String, name: String, isHost: Bool = false) {
+        guard let url = URL(string: "wss://api.waismind.com/rooms/ws?room_code=\(roomCode)&username=\(name)") else { return }
         self.name = name
+        self.isHost = isHost
         
         let request = URLRequest(url: url)
         webSocketTask = URLSession.shared.webSocketTask(with: request)
@@ -65,6 +69,11 @@ final class WebSocketManager: ObservableObject {
                                 let res = try self.decoder.decode(SocketResponse.self, from: jsonRes)
                                 print("Received: \(res)")
                                 
+                                if res.action == .time_request && self.isHost {
+                                    self.isTimeRequest = true
+                                    self.timeRequester = res.from
+                                }
+                                
                                 self.conversations.append(ConversationDTO(
                                     name: res.from,
                                     message: res.message,
@@ -100,6 +109,7 @@ final class WebSocketManager: ObservableObject {
                         self.conversations.append(ConversationDTO(
                             name: self.name,
                             message: request.message,
+                            ideaID: request.ideaId,
                             role: .send)
                         )
                     }

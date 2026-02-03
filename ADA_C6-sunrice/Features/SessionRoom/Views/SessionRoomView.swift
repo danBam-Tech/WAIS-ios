@@ -10,12 +10,15 @@ import SwiftUI
 struct SessionRoomView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var navVM: NavigationViewModel
-
     @StateObject private var vm: SessionRoomViewModel
     @State private var showExitAlert = false
+    
+    private var socketManager: WebSocketManager
 
-    init(id: Int64, isHost: Bool = false) {
-        _vm = .init(wrappedValue: .init(id: id, isHost: isHost))
+    init(id: Int64, isHost: Bool = false, socketManager: WebSocketManager) {
+        _vm = .init(wrappedValue: .init(id: id, isHost: isHost, socketManager: socketManager))
+        
+        self.socketManager = socketManager
     }
 
     @FocusState private var isTextFieldFocused: Bool
@@ -146,6 +149,15 @@ struct SessionRoomView: View {
                     .transition(.opacity)
                     .animation(.easeInOut(duration: 0.5), value: vm.isTimeUp)
             }
+            
+            if socketManager.isTimeRequest {
+                RequestTimeCard(requester: socketManager.timeRequester) {
+                    socketManager.sendRequest(SocketRequest(action: .time_addition, message: ""))
+                    socketManager.isTimeRequest = false
+                    socketManager.timeRequester = ""
+                }
+            }
+            
         }
         .fullScreenCover(isPresented: $vm.showRoundSummary) {
             RoundSummaryView(vm: vm)
@@ -196,5 +208,5 @@ struct SessionRoomView: View {
 }
 
 #Preview {
-    SessionRoomView(id: 1)
+    SessionRoomView(id: 1, socketManager: WebSocketManager())
 }

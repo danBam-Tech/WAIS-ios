@@ -10,8 +10,14 @@ import SwiftUI
 struct JoinSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var navVM: NavigationViewModel
-    @StateObject private var vm = JoinSessionViewModel()
+    @StateObject private var vm: JoinSessionViewModel
     @State private var alertDismissTask: Task<Void, Never>?
+    
+    init(socketManager: WebSocketManager) {
+        _vm = StateObject(
+            wrappedValue: JoinSessionViewModel(socketManager: socketManager)
+        )
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -105,5 +111,5 @@ struct JoinSessionView: View {
 }
 
 #Preview {
-    JoinSessionView()
+    JoinSessionView(socketManager: WebSocketManager())
 }

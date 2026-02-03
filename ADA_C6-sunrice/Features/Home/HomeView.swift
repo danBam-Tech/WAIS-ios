@@ -52,12 +52,12 @@ struct HomeView: View {
                         .environmentObject(navVM)
                         .toolbar(.hidden, for: .navigationBar)
                 case .join:
-                    JoinSessionView()
+                    JoinSessionView(socketManager: socketManager)
                         .environmentObject(navVM)
                         .toolbar(.hidden, for: .navigationBar)
                 case let .session(id, isHost):
                     if let sessionId = Int64(id) {
-                        SessionRoomView(id: sessionId, isHost: isHost)
+                        SessionRoomView(id: sessionId, isHost: isHost, socketManager: socketManager)
                             .environmentObject(navVM)
                             .toolbar(.hidden, for: .navigationBar)
                     } else {

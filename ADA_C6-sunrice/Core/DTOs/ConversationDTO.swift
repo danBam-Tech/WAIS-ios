@@ -16,6 +16,7 @@ struct ConversationDTO: Hashable, Identifiable {
     }
     var name: String
     var message: String
+    var ideaID = ""
     var role: Role
 }
 

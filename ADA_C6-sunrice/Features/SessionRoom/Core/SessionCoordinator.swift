@@ -64,6 +64,7 @@ final class SessionCoordinator: ObservableObject {
     @Published var hasFetchedInsights: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
+    private var socketManager: WebSocketManager
     
     // MARK: - Initialization
     
@@ -73,7 +74,8 @@ final class SessionCoordinator: ObservableObject {
         sessionService: SessionServicing,
         ideaService: IdeaServicing,
         summaryService: SummaryServicing,
-        insightService: IdeaInsightServicing
+        insightService: IdeaInsightServicing,
+        socketManager: WebSocketManager
     ) {
         self.sessionId = sessionId
         self.isHost = isHost
@@ -88,6 +90,7 @@ final class SessionCoordinator: ObservableObject {
         self.ideaManager = IdeaManager(ideaService: ideaService)
         self.summaryManager = SummaryManager(summaryService: summaryService)
         self.insightManager = IdeaInsightManager(insightService: insightService)
+        self.socketManager = socketManager
         
         // Initialize sub-ViewModels
         self.inputViewModel = SessionInputViewModel(
@@ -124,14 +127,15 @@ final class SessionCoordinator: ObservableObject {
     }
     
     // Convenience initializer for default services
-    convenience init(sessionId: Int64, isHost: Bool = false) {
+    convenience init(sessionId: Int64, isHost: Bool = false, socketManager: WebSocketManager) {
         self.init(
             sessionId: sessionId,
             isHost: isHost,
             sessionService: SessionService(client: supabaseManager),
             ideaService: IdeaService(client: supabaseManager),
             summaryService: SummaryService(client: supabaseManager),
-            insightService: IdeaInsightService(client: supabaseManager)
+            insightService: IdeaInsightService(client: supabaseManager),
+            socketManager: socketManager
         )
     }
     
@@ -493,6 +497,7 @@ final class SessionCoordinator: ObservableObject {
             }
         } else {
             // TODO: send request time extension to the host
+            socketManager.sendRequest(SocketRequest(action: .time_request, message: ""))
         }
     }
     

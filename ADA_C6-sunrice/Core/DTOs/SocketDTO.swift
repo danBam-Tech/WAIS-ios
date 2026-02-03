@@ -9,6 +9,7 @@ import Foundation
 
 struct SocketRequest: Codable, Hashable {
     var action: Action
+    var ideaId = ""
     var message: String
 }
 
@@ -20,7 +21,8 @@ struct SocketResponse: Codable, Hashable {
 
 enum Action: String, Codable {
     case join
-    case chat
+    case message
+    case comment
     case leave
     case start
     case finish

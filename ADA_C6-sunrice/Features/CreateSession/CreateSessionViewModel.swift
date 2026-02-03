@@ -230,7 +230,7 @@ final class CreateSessionViewModel: ObservableObject {
             // lobbyParticipants = makeParticipants()
             await fetchSessionAndMode(sessionId: session.id)
             if let roomCode = newSession?.token, let name = currentUser?.name {
-                socketManager.connect(roomCode: roomCode, name: name)
+                socketManager.connect(roomCode: roomCode, name: name, isHost: true)
             }
             advanceToNextStep()
         } catch {
@@ -247,7 +247,7 @@ final class CreateSessionViewModel: ObservableObject {
             errorMessage = nil
             let firstRoundType = try await sessionService.startSession(id: session.id)
             print("Session started! First round type: \(firstRoundType.name ?? "Unknown")")
-            
+            socketManager.sendRequest(SocketRequest(action: .start, message: ""))
             // Navigate to session room
             await MainActor.run {
                 onNavigateToSessionRoom?(session.id, true)
