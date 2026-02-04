@@ -15,7 +15,7 @@ final class WebSocketManager: ObservableObject {
     @Published var name = ""
     @Published var isHost = false
     @Published var isTimeRequest = false
-    @Published var timeRequester = ""
+    @Published var timeRequesters = [String]()
     
     private var webSocketTask: URLSessionWebSocketTask?
     private let encoder = JSONEncoder()
@@ -71,7 +71,7 @@ final class WebSocketManager: ObservableObject {
                                 
                                 if res.action == .time_request && self.isHost {
                                     self.isTimeRequest = true
-                                    self.timeRequester = res.from
+                                    self.timeRequesters.append(res.from)
                                 }
                                 
                                 self.conversations.append(ConversationDTO(

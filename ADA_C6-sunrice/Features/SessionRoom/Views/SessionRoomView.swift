@@ -150,11 +150,11 @@ struct SessionRoomView: View {
                     .animation(.easeInOut(duration: 0.5), value: vm.isTimeUp)
             }
             
-            if socketManager.isTimeRequest {
-                RequestTimeCard(requester: socketManager.timeRequester) {
+            if socketManager.isTimeRequest, let requester = socketManager.timeRequesters.first {
+                RequestTimeCard(requester: requester) {
                     socketManager.sendRequest(SocketRequest(action: .time_addition, message: ""))
-                    socketManager.isTimeRequest = false
-                    socketManager.timeRequester = ""
+                    socketManager.timeRequesters.removeFirst()
+                    socketManager.isTimeRequest = !socketManager.timeRequesters.isEmpty
                     vm.onTapExtensionButton()
                 }
             }
