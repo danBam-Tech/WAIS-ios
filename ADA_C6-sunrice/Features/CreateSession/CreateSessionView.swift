@@ -10,9 +10,15 @@ import SwiftUI
 struct CreateSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var navVM: NavigationViewModel
-    @StateObject private var vm = CreateSessionViewModel()
+    @StateObject private var vm: CreateSessionViewModel
     @State private var alertDismissTask: Task<Void, Never>?
     @State private var showStartSessionAlert = false
+    
+    init(socketManager: WebSocketManager) {
+        _vm = StateObject(
+            wrappedValue: CreateSessionViewModel(socketManager: socketManager)
+        )
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -70,7 +76,7 @@ struct CreateSessionView: View {
         .padding(.horizontal)
         .padding(.bottom)
         .animation(.spring(), value: vm.errorMessage)
-        .onChange(of: vm.errorMessage) { newValue in
+        .onChange(of: vm.errorMessage) { _, newValue in
             alertDismissTask?.cancel()
             guard let message = newValue else { return }
             
@@ -129,5 +135,5 @@ struct CreateSessionView: View {
 }
 
 #Preview {
-    CreateSessionView()
+    CreateSessionView(socketManager: WebSocketManager())
 }

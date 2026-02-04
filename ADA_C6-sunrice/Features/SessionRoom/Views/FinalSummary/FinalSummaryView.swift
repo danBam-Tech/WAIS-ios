@@ -75,5 +75,5 @@ struct FinalSummaryView: View {
 }
 
 #Preview {
-    FinalSummaryView(vm: SessionRoomViewModel(id: 1))
+    FinalSummaryView(vm: SessionRoomViewModel(id: 1, socketManager: WebSocketManager()))
 }

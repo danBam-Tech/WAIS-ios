@@ -45,15 +45,18 @@ final class JoinSessionViewModel: ObservableObject {
     @Published private(set) var currentUserRole: UserRoleDTO?
     
     private var cancellables = Set<AnyCancellable>()
+    private var socketManager: WebSocketManager
     
     init(
         userService: UserServicing,
         userRoleService: UserRoleServicing,
-        sessionService: SessionServicing
+        sessionService: SessionServicing,
+        socketManager: WebSocketManager
     ) {
         self.userService = userService
         self.userRoleService = userRoleService
         self.sessionService = sessionService
+        self.socketManager = socketManager
         // Forward changes from child VM to ensure the parent view updates if needed
         codeVM.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -65,11 +68,12 @@ final class JoinSessionViewModel: ObservableObject {
     }
     
     @MainActor
-    convenience init() {
+    convenience init(socketManager: WebSocketManager) {
         self.init(
             userService: UserService(client: supabaseManager),
             userRoleService: UserRoleService(client: supabaseManager),
-            sessionService: SessionService(client: supabaseManager)
+            sessionService: SessionService(client: supabaseManager),
+            socketManager: socketManager
         )
     }
     
@@ -137,6 +141,8 @@ final class JoinSessionViewModel: ObservableObject {
                     sessionId: session.id
                 )
             }
+            
+            socketManager.connect(roomCode: code, name: nameVM.username)
         } catch {
             errorMessage = error.localizedDescription
         }

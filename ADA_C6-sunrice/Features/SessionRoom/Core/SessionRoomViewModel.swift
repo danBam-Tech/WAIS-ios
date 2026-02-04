@@ -112,10 +112,11 @@ final class SessionRoomViewModel: ObservableObject {
     let summaryManager: SummaryManager
     
     private var cancellables = Set<AnyCancellable>()
+    private var socketManager: WebSocketManager
     
     // MARK: - Initialization
     
-    init(id: Int64, isHost: Bool = false, sessionService: SessionServicing, ideaService: IdeaServicing, summaryService: SummaryServicing, insightService: IdeaInsightServicing) {
+    init(id: Int64, isHost: Bool = false, sessionService: SessionServicing, ideaService: IdeaServicing, summaryService: SummaryServicing, insightService: IdeaInsightServicing, socketManager: WebSocketManager) {
         self.sessionId = id
         self.isHost = isHost
         self.ideaService = ideaService
@@ -127,26 +128,29 @@ final class SessionRoomViewModel: ObservableObject {
             sessionService: sessionService,
             ideaService: ideaService,
             summaryService: summaryService,
-            insightService: insightService
+            insightService: insightService,
+            socketManager: socketManager
         )
         
         // Expose managers for backward compatibility
         self.roundManager = coordinator.roundManager
         self.ideaManager = coordinator.ideaManager
         self.summaryManager = coordinator.summaryManager
+        self.socketManager = socketManager
         
         setupCoordinatorBindings()
     }
     
     // Convenience initializer for default services
-    convenience init(id: Int64, isHost: Bool = false) {
+    convenience init(id: Int64, isHost: Bool = false, socketManager: WebSocketManager) {
         self.init(
             id: id,
             isHost: isHost,
             sessionService: SessionService(client: supabaseManager),
             ideaService: IdeaService(client: supabaseManager),
             summaryService: SummaryService(client: supabaseManager),
-            insightService: IdeaInsightService(client: supabaseManager)
+            insightService: IdeaInsightService(client: supabaseManager),
+            socketManager: socketManager
         )
     }
     
@@ -191,12 +195,19 @@ final class SessionRoomViewModel: ObservableObject {
         
         coordinator.inputViewModel.inputText = inputText
         coordinator.inputViewModel.sendMessage()
+        
+        // socket to send message
+        socketManager.sendRequest(SocketRequest(action: .message, message: inputText))
+        
         inputText = ""
     }
     
     func submitComment(text: String, completion: @escaping () -> Void = {}) {
         guard let idea = selectedIdeaForComment else { return }
         coordinator.inputViewModel.submitComment(ideaId: idea.id, text: text, completion: completion)
+        
+        // socket to send comment
+        socketManager.sendRequest(SocketRequest(action: .comment, ideaId: String(idea.id), message: text))
     }
     
     func openCommentSheet(for idea: IdeaDTO) {

@@ -8,6 +8,7 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject var navVM = NavigationViewModel()
+    @StateObject var socketManager = WebSocketManager()
     
     var body: some View {
         NavigationStack(path: $navVM.path) {
@@ -47,16 +48,16 @@ struct HomeView: View {
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .create:
-                    CreateSessionView()
+                    CreateSessionView(socketManager: socketManager)
                         .environmentObject(navVM)
                         .toolbar(.hidden, for: .navigationBar)
                 case .join:
-                    JoinSessionView()
+                    JoinSessionView(socketManager: socketManager)
                         .environmentObject(navVM)
                         .toolbar(.hidden, for: .navigationBar)
                 case let .session(id, isHost):
                     if let sessionId = Int64(id) {
-                        SessionRoomView(id: sessionId, isHost: isHost)
+                        SessionRoomView(id: sessionId, isHost: isHost, socketManager: socketManager)
                             .environmentObject(navVM)
                             .toolbar(.hidden, for: .navigationBar)
                     } else {

@@ -47,15 +47,18 @@ final class CreateSessionViewModel: ObservableObject {
     @Published var isLoadingPresets = false
     
     private var cancellables = Set<AnyCancellable>()
+    private let socketManager: WebSocketManager
     
     init(
         userService: UserServicing,
         userRoleService: UserRoleServicing,
-        sessionService: SessionServicing
+        sessionService: SessionServicing,
+        socketManager: WebSocketManager
     ) {
         self.userService = userService
         self.userRoleService = userRoleService
         self.sessionService = sessionService
+        self.socketManager = socketManager
         // Forward changes from child VM to parent's view
         nameVM.objectWillChange
             .sink{ [weak self] _ in self?.objectWillChange.send() }
@@ -65,11 +68,12 @@ final class CreateSessionViewModel: ObservableObject {
     }
     
     @MainActor
-    convenience init() {
+    convenience init(socketManager: WebSocketManager) {
         self.init(
             userService: UserService(client: supabaseManager),
             userRoleService: UserRoleService(client: supabaseManager),
-            sessionService: SessionService(client: supabaseManager)
+            sessionService: SessionService(client: supabaseManager),
+            socketManager: socketManager
         )
     }
     
@@ -196,6 +200,7 @@ final class CreateSessionViewModel: ObservableObject {
         }
     }
     
+    // MARK: Create session and connect to WebSocket
     func createSession() async {
         guard !isPerformingAction else { return }
         guard let selectedPreset else {
@@ -224,6 +229,9 @@ final class CreateSessionViewModel: ObservableObject {
             }
             // lobbyParticipants = makeParticipants()
             await fetchSessionAndMode(sessionId: session.id)
+            if let roomCode = newSession?.token, let name = currentUser?.name {
+                socketManager.connect(roomCode: roomCode, name: name, isHost: true)
+            }
             advanceToNextStep()
         } catch {
             errorMessage = error.localizedDescription
@@ -239,7 +247,7 @@ final class CreateSessionViewModel: ObservableObject {
             errorMessage = nil
             let firstRoundType = try await sessionService.startSession(id: session.id)
             print("Session started! First round type: \(firstRoundType.name ?? "Unknown")")
-            
+            socketManager.sendRequest(SocketRequest(action: .start, message: ""))
             // Navigate to session room
             await MainActor.run {
                 onNavigateToSessionRoom?(session.id, true)

@@ -59,5 +59,5 @@ struct SelectPresetView: View {
 }
 
 #Preview {
-    SelectPresetView(vm: CreateSessionViewModel())
+    SelectPresetView(vm: CreateSessionViewModel(socketManager: WebSocketManager()))
 }

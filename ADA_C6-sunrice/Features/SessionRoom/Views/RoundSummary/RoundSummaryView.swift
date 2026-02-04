@@ -225,7 +225,7 @@ struct RoundSummaryView: View {
         @StateObject var vm: SessionRoomViewModel
         
         init() {
-            _vm = StateObject(wrappedValue: SessionRoomViewModel(id: 1, isHost: true))
+            _vm = StateObject(wrappedValue: SessionRoomViewModel(id: 1, isHost: true, socketManager: WebSocketManager()))
         }
         
         var body: some View {
